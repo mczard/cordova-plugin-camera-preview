@@ -618,6 +618,7 @@ public class CameraActivity extends Fragment {
     return output;
   }
 
+  private byte[] previousSnapshot;
   public void takeSnapshot(final int quality) {
 	if (mCamera == null) {
 		removeCamera();
@@ -645,10 +646,16 @@ public class CameraActivity extends Fragment {
           yuvImage.compressToJpeg(rect, quality, byteArrayOutputStream);
           byte[] data = byteArrayOutputStream.toByteArray();
           byteArrayOutputStream.close();
+		  previousSnapshot = data;
           eventListener.onSnapshotTaken(Base64.encodeToString(data, Base64.NO_WRAP));
         } catch (IOException e) {
           Log.d(TAG, "CameraPreview IOException");
-          eventListener.onSnapshotTakenError("IO Error");
+		  
+		  if (previousSnapshot != null) {
+			eventListener.onSnapshotTaken(Base64.encodeToString(previousSnapshot, Base64.NO_WRAP));
+		  } else {
+			eventListener.onSnapshotTakenError("IO Error");
+		  }
         } finally {
 
           mCamera.setPreviewCallback(null);
