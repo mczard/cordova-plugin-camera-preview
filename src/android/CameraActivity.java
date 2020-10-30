@@ -279,12 +279,9 @@ public class CameraActivity extends Fragment {
       }
     }
   }
-
-  @Override
-  public void onResume() {
-    super.onResume();
-
-    mCamera = Camera.open(defaultCameraId);
+  
+  private void recreateCamera() {
+	mCamera = Camera.open(defaultCameraId);
 
     if (cameraParameters != null) {
       mCamera.setParameters(cameraParameters);
@@ -326,10 +323,14 @@ public class CameraActivity extends Fragment {
   }
 
   @Override
-  public void onPause() {
-    super.onPause();
+  public void onResume() {
+    super.onResume();
 
-    // Because the Camera object is a shared resource, it's very important to release it when the activity is paused.
+    recreateCamera();
+  }
+  
+  private void removeCamera() {
+	 // Because the Camera object is a shared resource, it's very important to release it when the activity is paused.
     if (mCamera != null) {
       setDefaultCameraId();
       mPreview.setCamera(null, -1);
@@ -340,6 +341,13 @@ public class CameraActivity extends Fragment {
 
     Activity activity = getActivity();
     muteStream(false, activity);
+  }
+  
+  @Override
+  public void onPause() {
+    super.onPause();
+
+    removeCamera();
   }
 
   public Camera getCamera() {
@@ -611,6 +619,11 @@ public class CameraActivity extends Fragment {
   }
 
   public void takeSnapshot(final int quality) {
+	if (mCamera == null) {
+		removeCamera();
+		recreateCamera();
+	}
+
     mCamera.setPreviewCallback(new Camera.PreviewCallback() {
       @Override
       public void onPreviewFrame(byte[] bytes, Camera camera) {
@@ -811,12 +824,13 @@ public class CameraActivity extends Fragment {
 
       Camera.Parameters parameters = mCamera.getParameters();
 
-      Rect focusRect = calculateTapArea(pointX, pointY);
+      Rect focusRect = calculateTapArea(pointX, pointY, 1f);
       parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
       parameters.setFocusAreas(Arrays.asList(new Camera.Area(focusRect, 1000)));
 
       if (parameters.getMaxNumMeteringAreas() > 0) {
-        parameters.setMeteringAreas(Arrays.asList(new Camera.Area(focusRect, 1000)));
+        Rect meteringRect = calculateTapArea(pointX, pointY, 1.5f);
+        parameters.setMeteringAreas(Arrays.asList(new Camera.Area(meteringRect, 1000)));
       }
 
       try {
@@ -829,7 +843,7 @@ public class CameraActivity extends Fragment {
     }
   }
 
-  private Rect calculateTapArea(float x, float y) {
+  private Rect calculateTapArea(float x, float y, float coefficient) {
     if (x < 100) {
       x = 100;
     }
